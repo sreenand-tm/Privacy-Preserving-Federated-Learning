@@ -1,0 +1,18 @@
+10-Fold CV Mean Accuracy: 77.78% ± 6.70%
+
+                  precision    recall  f1-score   support
+
+ air_conditioner      0.659     0.593     0.624      1000
+        car_horn      0.742     0.916     0.820       429
+children_playing      0.829     0.822     0.825      1000
+        dog_bark      0.843     0.830     0.836      1000
+        drilling      0.757     0.808     0.781      1000
+   engine_idling      0.818     0.697     0.753      1000
+        gun_shot      0.876     0.984     0.927       374
+      jackhammer      0.704     0.683     0.693      1000
+           siren      0.831     0.790     0.810       929
+    street_music      0.776     0.878     0.824      1000
+
+        accuracy                          0.779      8732
+       macro avg      0.783     0.800     0.789      8732
+    weighted avg      0.779     0.779     0.777      8732
