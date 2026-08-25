@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central PC Master Dashboard — Federated Learning Review 1</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+            --cyan: #38bdf8;
+            --green: #34d399;
+            --orange: #fb923c;
+            --red: #f87171;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #090d16 100%);
+            color: var(--text-light);
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #38bdf8 0%, #34d399 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .round-badge {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            padding: 8px 18px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        /* 5 Node Grid */
+        .node-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .node-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .node-card.active {
+            border-color: var(--green);
+        }
+
+        .node-card .node-type {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--cyan);
+            margin-bottom: 6px;
+        }
+
+        .node-card .node-name {
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .node-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #555;
+        }
+
+        .dot.active {
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+        }
+
+        /* Dashboard Main Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--cyan);
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Log Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        th {
+            text-align: left;
+            padding: 10px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+        }
+
+        td {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* Krum Feed */
+        .krum-item {
+            background: rgba(0,0,0,0.2);
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--green);
+        }
+
+        .krum-item .k-round {
+            font-weight: 700;
+            font-size: 13px;
+            color: var(--text-light);
+        }
+
+        .krum-item .k-kept { color: var(--green); font-weight: 600; font-size: 12px; margin-top: 4px; }
+        .krum-item .k-dropped { color: var(--red); font-weight: 600; font-size: 12px; margin-top: 2px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <h1>Central PC Master Dashboard</h1>
+            <div class="subtitle">Real-Time Federated Learning Control Panel — Review 1 Demo</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:15px;">
+            <select id="active-model-select" style="background:rgba(0,0,0,0.4); color:#38bdf8; border:1px solid #38bdf8; border-radius:8px; padding:8px 12px; font-weight:600; font-size:13px; outline:none; cursor:pointer;">
+                <option value="model_5clients.onnx">🏆 5-Client Robust ONNX Model (80.0% Custom Audio Acc)</option>
+                <option value="model_8clients.onnx">🏆 8-Client Robust ONNX Model (68.1% Benchmark Acc)</option>
+                <option value="model_clean_fedavg.onnx">🎯 Clean FedAvg ONNX Model (76.8% Acc)</option>
+                <option value="model_centralized.onnx">🧠 Centralized Baseline ONNX Model (80.05% Acc Ceiling)</option>
+            </select>
+            <div class="round-badge" id="round-badge">Round 1 / 30</div>
+        </div>
+    </div>
+
+    <!-- 5 Node Connection Grid -->
+    <div class="node-grid">
+        <div class="node-card" id="node-1-card">
+            <div class="node-type">Node 1 (Physical)</div>
+            <div class="node-name">PC Physical Client</div>
+            <div class="node-status"><span class="dot" id="dot-1"></span> <span id="status-1">Disconnected</span></div>
+        </div>
+        <div class="node-card" id="node-2-card">
+            <div class="node-type">Node 2 (Physical)</div>
+            <div class="node-name">Raspberry Pi (Wi-Fi)</div>
+            <div class="node-status"><span class="dot" id="dot-2"></span> <span id="status-2">Disconnected</span></div>
+        </div>
+        <div class="node-card" id="node-3-card">
+            <div class="node-type">Node 3 (Virtual)</div>
+            <div class="node-name">Virtual Baseline 1</div>
+            <div class="node-status"><span class="dot" id="dot-3"></span> <span id="status-3">Disconnected</span></div>
+        </div>
+        <div class="node-card" id="node-4-card">
+            <div class="node-type">Node 4 (Virtual)</div>
+            <div class="node-name">Virtual Baseline 2</div>
+            <div class="node-status"><span class="dot" id="dot-4"></span> <span id="status-4">Disconnected</span></div>
+        </div>
+        <div class="node-card" id="node-5-card">
+            <div class="node-type">Node 5 (Virtual)</div>
+            <div class="node-name">Virtual Baseline 3</div>
+            <div class="node-status"><span class="dot" id="dot-5"></span> <span id="status-5">Disconnected</span></div>
+        </div>
+    </div>
+
+    <!-- Main Layout: Left (Chart + Log), Right (Krum Feed) -->
+    <div class="main-layout">
+        <div>
+            <!-- Live Accuracy Graph -->
+            <div class="card">
+                <div class="card-title">📈 Live Global Accuracy Curve (UrbanSound8K)</div>
+                <canvas id="accuracyChart" height="110"></canvas>
+            </div>
+
+            <!-- Weight Update Stream Log -->
+            <div class="card">
+                <div class="card-title">📥 Incoming Weight Update Log (Δw Stream)</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Node ID</th>
+                            <th>Node Name</th>
+                            <th>Round</th>
+                            <th>Δw Norm</th>
+                            <th>DP Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-table-body">
+                        <tr><td colspan="6" style="text-align:center; color:#777;">Waiting for incoming node updates...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right Side: Krum Feed -->
+        <div>
+            <div class="card">
+                <div class="card-title">🛡️ Multi-Krum Aggregation Feed</div>
+                <div id="krum-feed-container">
+                    <div style="text-align:center; color:#777; padding:20px;">No aggregations executed yet.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let accuracyChart;
+
+        function initChart() {
+            const ctx = document.getElementById('accuracyChart').getContext('2d');
+            accuracyChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Global Accuracy (%)',
+                        data: [],
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        borderWidth: 2.5,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { title: { display: true, text: 'Communication Round', color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        y: { title: { display: true, text: 'Accuracy (%)', color: '#94a3b8' }, min: 0, max: 100, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: { legend: { labels: { color: '#f8fafc' } } }
+                }
+            });
+        }
+
+        async function fetchDashboardState() {
+            try {
+                const resp = await fetch('/api/dashboard_state');
+                const data = await resp.json();
+
+                // 1. Update Round Badge
+                document.getElementById('round-badge').innerText = `Round ${data.current_round} / ${data.num_rounds}`;
+
+                // 2. Update Node Cards
+                for (let i = 1; i <= 5; i++) {
+                    const node = data.nodes[i];
+                    if (node) {
+                        const card = document.getElementById(`node-${i}-card`);
+                        const dot = document.getElementById(`dot-${i}`);
+                        const statusTxt = document.getElementById(`status-${i}`);
+                        
+                        if (node.status === "Active") {
+                            card.classList.add('active');
+                            dot.classList.add('active');
+                            statusTxt.innerText = `Active (${node.last_seen})`;
+                        } else {
+                            card.classList.remove('active');
+                            dot.classList.remove('active');
+                            statusTxt.innerText = "Disconnected";
+                        }
+                    }
+                }
+
+                // 3. Update Log Table
+                const tbody = document.getElementById('log-table-body');
+                if (data.logs && data.logs.length > 0) {
+                    tbody.innerHTML = data.logs.reverse().map(l => `
+                        <tr>
+                            <td>${l.timestamp}</td>
+                            <td><strong style="color:#38bdf8;">Node ${l.node_id}</strong></td>
+                            <td>${l.node_name}</td>
+                            <td>${l.round}</td>
+                            <td><code>${l.delta_norm}</code></td>
+                            <td><span style="color:#34d399;">✓ Clipped + Noise</span></td>
+                        </tr>
+                    `).join('');
+                }
+
+                // 4. Update Krum Feed
+                const krumContainer = document.getElementById('krum-feed-container');
+                if (data.krum && data.krum.length > 0) {
+                    krumContainer.innerHTML = data.krum.reverse().map(k => `
+                        <div class="krum-item">
+                            <div class="k-round">Round ${k.round} Multi-Krum Output</div>
+                            <div class="k-kept">✓ Kept Nodes: [${k.kept_nodes.join(', ')}]</div>
+                            <div class="k-dropped">✗ Dropped Outlier: Node ${k.dropped_nodes.join(', ')}</div>
+                        </div>
+                    `).join('');
+                }
+
+                // 5. Update Accuracy Chart
+                if (data.accuracy && data.accuracy.length > 0) {
+                    accuracyChart.data.labels = data.accuracy.map(a => `R${a.round}`);
+                    accuracyChart.data.datasets[0].data = data.accuracy.map(a => a.accuracy);
+                    accuracyChart.update();
+                }
+
+            } catch (e) {
+                console.error("Dashboard fetch error:", e);
+            }
+        }
+
+        const modelSelect = document.getElementById('active-model-select');
+        if (modelSelect) {
+            modelSelect.addEventListener('change', async (e) => {
+                const selectedFile = e.target.value;
+                try {
+                    const resp = await fetch('/select_model', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ model_file: selectedFile })
+                    });
+                    const res = await resp.json();
+                    console.log("Model switch result:", res.message);
+                } catch (err) {
+                    console.error("Model switch failed:", err);
+                }
+            });
+        }
+
+        window.onload = () => {
+            initChart();
+            fetchDashboardState();
+            setInterval(fetchDashboardState, 2000);
+        };
+    </script>
+</body>
+</html>
