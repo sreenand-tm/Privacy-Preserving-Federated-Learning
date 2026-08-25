@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Federated Edge Node Dashboard</title>
+    <!-- Load ONNX Runtime Web -->
+    <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/ort.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e1e2f 0%, #10101b 100%);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 35px 30px;
+            text-align: center;
+            width: 88%;
+            max-width: 440px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        h1 { font-weight: 700; margin-bottom: 5px; font-size: 24px; }
+        p { color: #aaa; font-size: 14px; margin-bottom: 20px; }
+
+        .model-select {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            color: #4facfe;
+            border: 1px solid rgba(79, 172, 254, 0.4);
+            border-radius: 10px;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .btn-listen {
+            background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+            border: none;
+            border-radius: 50px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 18px;
+            padding: 14px 35px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .btn-listen:active { transform: scale(0.97); }
+        .btn-listen:disabled { background: #555; color: #888; box-shadow: none; cursor: not-allowed; }
+
+        .btn-train {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+            padding: 12px 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .btn-train:active { transform: scale(0.97); }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            color: #777;
+            font-size: 12px;
+            margin: 15px 0;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .divider::before { margin-right: .5em; }
+        .divider::after { margin-left: .5em; }
+
+        .dropzone {
+            border: 2px dashed rgba(79, 172, 254, 0.4);
+            border-radius: 12px;
+            padding: 20px 15px;
+            background: rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: #00f2fe;
+            background: rgba(79, 172, 254, 0.1);
+        }
+
+        .dropzone-icon { font-size: 28px; margin-bottom: 8px; }
+        .dropzone-text { font-size: 13px; color: #ccc; font-weight: 500; }
+        .dropzone-sub { font-size: 11px; color: #777; margin-top: 4px; }
+
+        #file-input { display: none; }
+
+        .status { margin-top: 20px; font-size: 14px; font-weight: 500; color: #00f2fe; }
+        
+        .result-box {
+            margin-top: 20px;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 20px;
+            display: none;
+        }
+        
+        .class-name { font-size: 26px; font-weight: 700; color: #fff; margin-bottom: 6px; }
+        .confidence { font-size: 14px; color: #aaa; }
+        
+        .visualizer {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 40px;
+            gap: 4px;
+            margin-bottom: 15px;
+        }
+        .bar {
+            width: 8px;
+            background: #4facfe;
+            border-radius: 4px;
+            height: 5px;
+            transition: height 0.1s ease;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Unified Edge Node</h1>
+        <p>Inference + Local PyTorch Backprop + Auto FL Upload</p>
+
+        <select id="model-selector" class="model-select">
+            <option value="model_8clients.onnx">8-Client Model (68.1% Acc - Recommended)</option>
+            <option value="model_5clients.onnx">5-Client Model (56.1% Acc)</option>
+            <option value="model_centralized.onnx">Centralized Model (Baseline)</option>
+            <option value="model_clean_fedavg.onnx">Clean FedAvg Model</option>
+        </select>
+        
+        <div class="visualizer" id="visualizer">
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+            <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+        </div>
+
+        <button class="btn-listen" id="btn-listen" disabled>Loading Model...</button>
+
+        <div class="divider">OR UPLOAD AUDIO FILE</div>
+
+        <div class="dropzone" id="dropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">Click to Choose or Drag & Drop Audio File</div>
+            <div class="dropzone-sub">Supports .wav, .mp3, .flac</div>
+        </div>
+        <input type="file" id="file-input" accept="audio/*">
+
+        <button class="btn-train" id="btn-train">⚡ Trigger PyTorch Backprop & Send Δw to PC Server</button>
+
+        <div class="status" id="status">Initializing ONNX Runtime...</div>
+
+        <div class="result-box" id="result-box">
+            <div class="class-name" id="class-name">--</div>
+            <div class="confidence" id="confidence">Confidence: --%</div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
